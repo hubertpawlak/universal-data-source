@@ -37,50 +37,60 @@ fn main() {
             process::exit(1);
         }
     };
+    // Extract useful values from config to avoid cloning inside loop
+    let one_wire_path_prefix: PathBuf =
+        PathBuf::from(&config.one_wire_path_prefix.unwrap_or_default());
+    let send_interval = &config.send_interval.unwrap_or_default();
+    let enable_one_wire = &config.enable_one_wire.unwrap_or_default();
 
-    let one_wire_path_prefix = PathBuf::from(&config.one_wire_path_prefix.unwrap_or_default());
     // Loop every send_interval seconds
     // Send data to all endpoints
     // Send data from all sensors
     loop {
         // Get start time
         let start_time = Instant::now();
-        // Find all sensors
-        let sensors = scanner::get_all_ds18b20_sensors(&one_wire_path_prefix);
-        // Map additional fields: temperature and resolution
-        let sensors: Vec<MeasuredTemperature> = sensors
-            .iter()
-            .map(|sensor| {
-                let meta = sensor.meta.clone();
-                let temperature = sensor.get_temperature();
-                let resolution = sensor.get_resolution();
-                MeasuredTemperature {
-                    meta,
-                    temperature,
-                    resolution,
-                }
-            })
-            .collect();
-        // Filter sensors that have any temperature reading
-        let sensors: Vec<MeasuredTemperature> = sensors
-            .into_iter()
-            .filter(|sensor| sensor.temperature.is_some())
-            .collect();
+        // Check if 1-Wire is enabled
+        let sensors = match enable_one_wire {
+            true => {
+                // Find all sensors - calling inside loop makes sensors hot-swappable
+                let sensors = scanner::get_all_ds18b20_sensors(&one_wire_path_prefix);
+                // Map additional fields: temperature and resolution
+                let sensors: Vec<MeasuredTemperature> = sensors
+                    .iter()
+                    .map(|sensor| {
+                        let meta = sensor.meta.clone();
+                        let temperature = sensor.get_temperature();
+                        let resolution = sensor.get_resolution();
+                        MeasuredTemperature {
+                            meta,
+                            temperature,
+                            resolution,
+                        }
+                    })
+                    .collect();
+                // Filter sensors that have any temperature reading
+                let sensors: Vec<MeasuredTemperature> = sensors
+                    .into_iter()
+                    .filter(|sensor| sensor.temperature.is_some())
+                    .collect();
+                sensors
+            }
+            // Return empty vector if 1-Wire is disabled
+            false => Vec::new(),
+        };
+        // Merge data to send
+        let data_to_send = sensors;
         // Send data to all endpoints
         for endpoint in &config.endpoints {
             // Send data to endpoint
-            send::send_data(
-                &sensors,
-                endpoint,
-                &config.send_interval.unwrap_or_default(),
-            );
+            send::send_data(&data_to_send, endpoint, send_interval);
         }
         // Get end time
         let end_time = Instant::now();
         // Calculate duration
         let used_time = end_time.duration_since(start_time);
         // Calculate time to sleep
-        let duration_left_to_sleep = config.send_interval.unwrap_or_default() - used_time;
+        let duration_left_to_sleep = send_interval.checked_sub(used_time).unwrap_or_default();
         // Sleep for sleep_time or at least 500ms
         thread::sleep(cmp::max(duration_left_to_sleep, Duration::from_millis(500)));
     }
