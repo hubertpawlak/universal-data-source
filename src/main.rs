@@ -38,7 +38,7 @@ fn main() {
         }
     };
 
-    let one_wire_path_prefix = PathBuf::from(&config.one_wire_path_prefix);
+    let one_wire_path_prefix = PathBuf::from(&config.one_wire_path_prefix.unwrap_or_default());
     // Loop every send_interval seconds
     // Send data to all endpoints
     // Send data from all sensors
@@ -69,14 +69,18 @@ fn main() {
         // Send data to all endpoints
         for endpoint in &config.endpoints {
             // Send data to endpoint
-            send::send_data(&sensors, endpoint, &config.send_interval);
+            send::send_data(
+                &sensors,
+                endpoint,
+                &config.send_interval.unwrap_or_default(),
+            );
         }
         // Get end time
         let end_time = Instant::now();
         // Calculate duration
         let used_time = end_time.duration_since(start_time);
         // Calculate time to sleep
-        let duration_left_to_sleep = config.send_interval - used_time;
+        let duration_left_to_sleep = config.send_interval.unwrap_or_default() - used_time;
         // Sleep for sleep_time or at least 500ms
         thread::sleep(cmp::max(duration_left_to_sleep, Duration::from_millis(500)));
     }

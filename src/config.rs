@@ -13,10 +13,21 @@ pub struct Endpoint {
 }
 
 #[derive(Serialize, Deserialize)]
+/// `Config` struct for deserializing config.json.
+/// Automatically generated file contains all fields
+/// but only endpoints are required.
 pub struct Config {
+    // Required fields
+    // Missing values cause deserialization to fail
+    // and regenerate config.json if not exists
     pub endpoints: Vec<Endpoint>,
-    pub one_wire_path_prefix: String,
-    pub send_interval: Duration,
+    // Optional fields
+    // Can be safely unwrapped with unwrap_or_default()
+    // send.rs
+    pub send_interval: Option<Duration>,
+    // ds18b20.rs
+    pub enable_one_wire: Option<bool>,
+    pub one_wire_path_prefix: Option<String>,
 }
 impl ::std::default::Default for Config {
     fn default() -> Self {
@@ -31,8 +42,9 @@ impl ::std::default::Default for Config {
                     bearer_token: Some("YOUR_SECRET_TOKEN".to_string()),
                 },
             ],
-            one_wire_path_prefix: String::from("/sys/bus/w1/devices"),
-            send_interval: Duration::from_secs(5),
+            send_interval: Some(Duration::from_secs(5)),
+            enable_one_wire: Some(false),
+            one_wire_path_prefix: Some(String::from("/sys/bus/w1/devices")),
         }
     }
 }
