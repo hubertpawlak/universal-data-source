@@ -28,10 +28,16 @@ where
                     println!("{}", json["json"]);
                 }
             } else {
-                println!("Error: {}", response.status());
+                // Print response error with endpoint url
+                println!("Error: {} - {}", response.status(), endpoint.url);
             }
         }
         Err(error) => {
+            // Ignore connection errors in release builds
+            #[cfg(not(debug_assertions))]
+            if error.is_connect() {
+                return;
+            }
             println!("Error: {}", error);
         }
     }
