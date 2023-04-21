@@ -4,6 +4,10 @@ use regex::Regex;
 use serde::{Serialize, Serializer};
 use std::{fs::read_to_string, path::PathBuf};
 
+/// `Ds18b20TemperatureSensor`
+/// represents a 1-Wire temperature sensor (ex. DS18B20).
+/// It needs to have both `temperature`
+/// and `resolution` files inside its directory
 pub struct Ds18b20TemperatureSensor {
     pub meta: HardwareMetadata,
     path: PathBuf,
