@@ -40,11 +40,11 @@ where
                 {
                     let json: serde_json::Value = response.json().unwrap();
                     // Print only "json" field
-                    println!("{}", json["json"]);
+                    log::trace!("{}", json["json"]);
                 }
             } else {
                 // Print response error with endpoint url
-                println!("Error: {} - {}", response.status(), endpoint.url);
+                log::error!("Got {} response from {}", response.status(), endpoint.url);
             }
         }
         Err(error) => {
@@ -53,7 +53,7 @@ where
             if error.is_connect() {
                 return;
             }
-            println!("Error: {}", error);
+            log::error!("Connection failed: {}", error);
         }
     }
 }

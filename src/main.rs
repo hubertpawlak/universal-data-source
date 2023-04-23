@@ -21,6 +21,8 @@ mod send;
 mod ups;
 
 fn main() {
+    // Initialize logger
+    env_logger::init();
     // Get path to config file from "UDS_RS_CONFIG_FILE" env var
     // If not set, use "config.json" in current directory
     let config_file_path = match std::env::var("UDS_RS_CONFIG_FILE") {
@@ -32,15 +34,16 @@ fn main() {
     let config = match config::read_config(&config_file_path) {
         Ok(config) => config,
         Err(error) => {
-            println!("Error: {}", error);
+            log::error!("Failed to read config: {}", error);
             // Write default config to file
             if create_default_config_if_not_exists(&config_file_path) {
-                println!("Wrote default config to {}", config_file_path.display());
-                println!("Please edit this file and try again");
+                log::error!(
+                    "Wrote default config to {}. Please edit this file and try again.",
+                    config_file_path.display()
+                );
             } else {
-                println!("Failed to create default config");
-                println!(
-                    "Try manually deleting {} and running again",
+                log::error!(
+                    "Failed to create default config. Try manually deleting {} and running again",
                     config_file_path.display()
                 );
             }
