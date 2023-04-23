@@ -64,6 +64,12 @@ If a module is disabled, it simply returns an empty array for the corresponding 
 3. Run `./universal-data-source` again to start the program. Remember to keep the `UDS_RS_CONFIG_FILE` environment variable set if you're using a custom configuration file.
 
 # Configuration
+## Environment variables
+| key                | default         | description                                                                        | required |
+| ------------------ | --------------- | ---------------------------------------------------------------------------------- | -------- |
+| UDS_RS_CONFIG_FILE | `./config.json` | Path to the configuration file.                                                    | no       |
+| RUST_LOG           | `error`         | See [log::Level](https://docs.rs/log/latest/log/enum.Level.html) for more details. | no       |
+
 ## All top-level options
 The configuration file is written as a JSON object. See table below for a list of all available options.
 | key                   | type                            | default               | description                                   | required |
