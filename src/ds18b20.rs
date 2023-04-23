@@ -230,4 +230,23 @@ mod tests {
         // Check if resolution is valid
         assert!(resolution.is_none());
     }
+
+    #[test]
+    fn serialize_as_measured_temperature() {
+        // Create a valid device dir
+        let temp_dir = create_valid_device_dir();
+        let temp_path = temp_dir.path();
+        let device_dir = temp_path.join(VALID_DEVICE_ID);
+        // Create new sensor from device dir
+        let sensor = Ds18b20TemperatureSensor::new(device_dir);
+        let measured = MeasuredTemperature {
+            meta: sensor.meta.clone(),
+            temperature: sensor.get_temperature(),
+            resolution: sensor.get_resolution(),
+        };
+        // Serialize sensor as measured temperature
+        let serialized = serde_json::to_string(&measured);
+        // Check if serialization succeeded
+        assert!(serialized.is_ok());
+    }
 }
