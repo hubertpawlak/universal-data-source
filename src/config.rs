@@ -52,8 +52,13 @@ impl ::std::default::Default for Config {
 pub fn write_default_config_to_file(path: &PathBuf) -> bool {
     // Create default config
     let config = Config::default();
+    // Use 4 spaces for indentation
+    let formatter = PrettyFormatter::with_indent(b"    ");
     // Serialize config to pretty json
-    let json = serde_json::to_string_pretty(&config).unwrap();
+    let mut buffer = Vec::new();
+    let mut serializer = Serializer::with_formatter(&mut buffer, formatter);
+    config.serialize(&mut serializer).unwrap();
+    let json = String::from_utf8(buffer).unwrap();
     // Write config to file and return result
     fs::write(path, json).is_ok()
 }
