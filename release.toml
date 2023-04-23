@@ -1,0 +1,13 @@
+sign-commit = true
+sign-tag = true
+push-remote = "origin"
+release = true
+publish = false
+verify = false
+push = false
+push-options = []
+consolidate-commits = false
+pre-release-commit-message = "chore: Release {{crate_name}} version {{version}}"
+tag-message = "Release version {{version}}"
+tag-name = "{{prefix}}v{{version}}"
+tag = true
