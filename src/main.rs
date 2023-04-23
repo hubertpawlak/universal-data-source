@@ -28,11 +28,14 @@ fn main() {
             println!("Error: {}", error);
             // Write default config to file
             if create_default_config_if_not_exists(&config_file_path) {
-                println!("Wrote default config to config.json");
-                println!("Please edit config.json and try again");
+                println!("Wrote default config to {}", config_file_path.display());
+                println!("Please edit this file and try again");
             } else {
-                println!("Failed to create default config.json");
-                println!("Try manually deleting config.json and running again");
+                println!("Failed to create default config");
+                println!(
+                    "Try manually deleting {} and running again",
+                    config_file_path.display()
+                );
             }
             process::exit(1);
         }
