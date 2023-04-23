@@ -1,7 +1,22 @@
 // Licensed under the Open Software License version 3.0
-use crate::config::Endpoint;
+use crate::{config::Endpoint, ds18b20::MeasuredTemperature, ups::UninterruptiblePowerSupplyData};
 use serde::Serialize;
 use std::time::Duration;
+
+#[derive(Serialize)]
+pub struct DataToSend {
+    sensors: Vec<MeasuredTemperature>,
+    upses: Vec<UninterruptiblePowerSupplyData>,
+}
+
+impl DataToSend {
+    pub fn new(
+        sensors: Vec<MeasuredTemperature>,
+        upses: Vec<UninterruptiblePowerSupplyData>,
+    ) -> Self {
+        Self { sensors, upses }
+    }
+}
 
 pub fn send_data<T>(json: &T, endpoint: &Endpoint, timeout: &Duration)
 where

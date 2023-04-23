@@ -1,5 +1,6 @@
 // Licensed under the Open Software License version 3.0
 use serde::{Deserialize, Serialize};
+use serde_json::{ser::PrettyFormatter, Serializer};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -10,6 +11,35 @@ use std::{
 pub struct Endpoint {
     pub url: String,
     pub bearer_token: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct UniversalPowerSupplyConfig {
+    pub name: String,
+    pub variables_to_monitor: Option<Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct NetworkUpsToolsClientConfig {
+    pub host: String,
+    pub port: Option<u16>,
+    pub enable_tls: Option<bool>,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub upses: Vec<UniversalPowerSupplyConfig>,
+}
+
+impl NetworkUpsToolsClientConfig {
+    pub fn get_server_id(&self) -> String {
+        // Format server id as username@host:port
+        // It should be done here because it's used in multiple places
+        format!(
+            "{}@{}:{}",
+            self.username.clone().unwrap_or_default(),
+            self.host,
+            self.port.unwrap_or(rups::DEFAULT_PORT),
+        )
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -28,6 +58,9 @@ pub struct Config {
     // ds18b20.rs
     pub enable_one_wire: Option<bool>,
     pub one_wire_path_prefix: Option<String>,
+    // ups.rs and nut.rs
+    pub enable_ups_monitoring: Option<bool>,
+    pub nut_connections: Option<Vec<NetworkUpsToolsClientConfig>>,
 }
 impl ::std::default::Default for Config {
     fn default() -> Self {
@@ -45,6 +78,27 @@ impl ::std::default::Default for Config {
             send_interval: Some(Duration::from_secs(5)),
             enable_one_wire: Some(false),
             one_wire_path_prefix: Some(String::from("/sys/bus/w1/devices")),
+            enable_ups_monitoring: Some(false),
+            nut_connections: Some(vec![NetworkUpsToolsClientConfig {
+                host: "ups.lan".to_string(),
+                port: Some(rups::DEFAULT_PORT),
+                enable_tls: Some(false),
+                username: None,
+                password: None,
+                upses: vec![
+                    UniversalPowerSupplyConfig {
+                        name: "ups1".to_string(),
+                        variables_to_monitor: None,
+                    },
+                    UniversalPowerSupplyConfig {
+                        name: "ups2".to_string(),
+                        variables_to_monitor: Some(vec![
+                            "battery.charge".to_string(),
+                            "battery.runtime".to_string(),
+                        ]),
+                    },
+                ],
+            }]),
         }
     }
 }
@@ -144,5 +198,14 @@ mod tests {
             config.one_wire_path_prefix
         );
         assert_eq!(read_config.send_interval, config.send_interval);
+        assert_eq!(read_config.enable_one_wire, config.enable_one_wire);
+        assert_eq!(
+            read_config.enable_ups_monitoring,
+            config.enable_ups_monitoring
+        );
+        assert_eq!(
+            read_config.nut_connections.unwrap().len(),
+            config.nut_connections.unwrap().len()
+        );
     }
 }

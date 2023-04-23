@@ -1,17 +1,24 @@
 // Licensed under the Open Software License version 3.0
 use crate::config::create_default_config_if_not_exists;
+use config::NetworkUpsToolsClientConfig;
 use ds18b20::MeasuredTemperature;
+use nut::NetworkUpsToolsClient;
+use send::DataToSend;
 use std::{
     cmp,
+    collections::HashMap,
     path::PathBuf,
     process, thread,
     time::{Duration, Instant},
 };
+use ups::{UninterruptiblePowerSupply, UninterruptiblePowerSupplyData};
 mod config;
 mod ds18b20;
 mod hardware;
+mod nut;
 mod scanner;
 mod send;
+mod ups;
 
 fn main() {
     // Get path to config file from "UDS_RS_CONFIG_FILE" env var
@@ -45,7 +52,54 @@ fn main() {
         PathBuf::from(&config.one_wire_path_prefix.unwrap_or_default());
     let send_interval = &config.send_interval.unwrap_or_default();
     let enable_one_wire = &config.enable_one_wire.unwrap_or_default();
-
+    let enable_ups_monitoring = &config.enable_ups_monitoring.unwrap_or_default();
+    // Build config for each NUT server
+    let nut_configs: Vec<NetworkUpsToolsClientConfig> = match enable_ups_monitoring {
+        true => config
+            .nut_connections
+            .unwrap_or_default()
+            .into_iter()
+            .collect(),
+        // Return empty vector if UPS monitoring is disabled
+        false => Vec::new(),
+    };
+    // Create a Vec of UninterruptiblePowerSupply structs
+    let upses: Vec<UninterruptiblePowerSupply> = match enable_ups_monitoring {
+        true => nut_configs
+            .iter()
+            .flat_map(|client_config| {
+                // Return all UPSes for this server
+                client_config
+                    .upses
+                    .clone()
+                    .into_iter()
+                    .map(|ups_config| -> UninterruptiblePowerSupply {
+                        UninterruptiblePowerSupply::new(
+                            client_config.get_server_id(),
+                            ups_config.name,
+                            ups_config.variables_to_monitor,
+                        )
+                    })
+                    .collect::<Vec<UninterruptiblePowerSupply>>()
+            })
+            .collect(),
+        // Return empty vector if UPS monitoring is disabled
+        false => Vec::new(),
+    };
+    // Create a HashMap of connections by server_id
+    let mut nut_clients: HashMap<String, NetworkUpsToolsClient> = match enable_ups_monitoring {
+        true => nut_configs
+            .into_iter()
+            .map(|client_config| {
+                // Create a new NUT client
+                let client = NetworkUpsToolsClient::new(&client_config);
+                // Return a tuple of (server_id, client)
+                (client.get_server_id(), client)
+            })
+            .collect(),
+        // Return empty HashMap if UPS monitoring is disabled
+        false => HashMap::new(),
+    };
     // Loop every send_interval seconds
     // Send data to all endpoints
     // Send data from all sensors
@@ -53,7 +107,7 @@ fn main() {
         // Get start time
         let start_time = Instant::now();
         // Check if 1-Wire is enabled
-        let sensors = match enable_one_wire {
+        let sensors: Vec<MeasuredTemperature> = match enable_one_wire {
             true => {
                 // Find all sensors - calling inside loop makes sensors hot-swappable
                 let sensors = scanner::get_all_ds18b20_sensors(&one_wire_path_prefix);
@@ -81,8 +135,37 @@ fn main() {
             // Return empty vector if 1-Wire is disabled
             false => Vec::new(),
         };
-        // Merge data to send
-        let data_to_send = sensors;
+        let upses: Vec<UninterruptiblePowerSupplyData> = match enable_ups_monitoring {
+            true => {
+                // Get data from all UPSes
+                upses
+                    .iter()
+                    .filter_map(|ups| {
+                        // Take ownership of client
+                        let mut client = match nut_clients.remove(&ups.get_server_id()) {
+                            Some(client) => client,
+                            None => return None,
+                        };
+                        // Take ownership of connection
+                        let connection = match client.take_connection() {
+                            Some(connection) => connection,
+                            None => return None,
+                        };
+                        // Extract variables from UPS
+                        let (connection, variables) = ups.list_variables(connection);
+                        // Give connection back to client
+                        client.give_connection(connection);
+                        // Give client back to HashMap
+                        nut_clients.insert(client.get_server_id(), client);
+                        Some(UninterruptiblePowerSupplyData::new(ups, variables))
+                    })
+                    .collect()
+            }
+            // Return empty vector if UPS monitoring is disabled
+            false => Vec::new(),
+        };
+        // Merge data to send into one Object
+        let data_to_send = DataToSend::new(sensors, upses);
         // Send data to all endpoints
         for endpoint in &config.endpoints {
             // Send data to endpoint

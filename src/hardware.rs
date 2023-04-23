@@ -4,11 +4,13 @@ use serde::Serialize;
 #[derive(Serialize, Clone)]
 pub enum SourceType {
     OneWire,
+    NetworkUpsTools,
 }
 
 #[derive(Serialize, Clone)]
 pub enum HardwareType {
     TemperatureSensor,
+    UninterruptiblePowerSupply,
 }
 
 #[derive(Serialize, Clone)]
