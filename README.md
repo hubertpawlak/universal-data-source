@@ -72,14 +72,15 @@ If a module is disabled, it simply returns an empty array for the corresponding 
 
 ## All top-level options
 The configuration file is written as a JSON object. See table below for a list of all available options.
-| key                   | type                            | default               | description                                   | required |
-| --------------------- | ------------------------------- | --------------------- | --------------------------------------------- | -------- |
-| endpoints             | `Endpoint[]`                    | -                     | List of endpoints to which data will be sent. | **yes**  |
-| send_interval         | `Duration`                      | 5s                    | Interval between sending data to endpoints.   | no       |
-| enable_one_wire       | `bool`                          | false                 | Enable 1-Wire temperature sensors.            | no       |
-| one_wire_path_prefix  | `string`                        | `/sys/bus/w1/devices` | Path to 1-Wire sysfs directory.               | no       |
-| enable_ups_monitoring | `bool`                          | false                 | Enable Network UPS Tools monitoring.          | no       |
-| nut_connections       | `NetworkUpsToolsClientConfig[]` | []                    | List of NUT servers to connect to.            | **yes**  |
+| key                      | type                            | default               | description                                   | required |
+| ------------------------ | ------------------------------- | --------------------- | --------------------------------------------- | -------- |
+| endpoints                | `Endpoint[]`                    | -                     | List of endpoints to which data will be sent. | **yes**  |
+| send_interval            | `Duration`                      | 5s                    | Interval between sending data to endpoints.   | no       |
+| ignore_connection_errors | `bool`                          | false                 | Ignore connection errors while sending data.  | no       |
+| enable_one_wire          | `bool`                          | false                 | Enable 1-Wire temperature sensors.            | no       |
+| one_wire_path_prefix     | `string`                        | `/sys/bus/w1/devices` | Path to 1-Wire sysfs directory.               | no       |
+| enable_ups_monitoring    | `bool`                          | false                 | Enable Network UPS Tools monitoring.          | no       |
+| nut_connections          | `NetworkUpsToolsClientConfig[]` | []                    | List of NUT servers to connect to.            | **yes**  |
 
 ## Types explained
 ### `Endpoint`
