@@ -48,7 +48,7 @@ pub fn send_data<T>(
                 }
             } else {
                 // Print response error with endpoint url
-                log::error!("Got {} response from {}", response.status(), endpoint.url);
+                log::warn!("Got {} response from {}", response.status(), endpoint.url);
             }
         }
         Err(error) => {
@@ -56,7 +56,7 @@ pub fn send_data<T>(
             if *ignore_connection_errors && error.is_connect() {
                 return;
             }
-            log::error!("Connection failed: {}", error);
+            log::warn!("Connection failed: {}", error);
         }
     }
 }
