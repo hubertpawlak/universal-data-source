@@ -96,3 +96,23 @@ impl UninterruptiblePowerSupplyData {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_ups() {
+        let server_id = "test_server_id".to_string();
+        let ups_name = "test_ups_name".to_string();
+        let variables_to_monitor = Some(vec!["test_variable".to_string()]);
+        let ups = UninterruptiblePowerSupply::new(
+            server_id.clone(),
+            ups_name.clone(),
+            variables_to_monitor.clone(),
+        );
+        assert_eq!(ups.get_server_id(), server_id);
+        assert_eq!(ups.ups_name, ups_name);
+        assert_eq!(ups.variables_to_monitor, variables_to_monitor.unwrap());
+    }
+}

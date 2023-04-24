@@ -60,4 +60,14 @@ mod tests {
         assert_eq!(sensor.get_temperature(), Some(1.234));
         assert_eq!(sensor.get_resolution(), Some(12));
     }
+
+    #[test]
+    fn test_get_all_ds18b20_sensors_empty() {
+        // Create a valid 1-Wire device directory if needed
+        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_path = temp_dir.path().to_path_buf();
+        // Test get_all_ds18b20_sensors
+        let list = get_all_ds18b20_sensors(&temp_path);
+        assert_eq!(list.len(), 0);
+    }
 }

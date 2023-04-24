@@ -55,3 +55,43 @@ impl NetworkUpsToolsClient {
         self.connection = Some(connection);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::UniversalPowerSupplyConfig;
+
+    #[test]
+    fn test_get_server_id_default() {
+        let config = NetworkUpsToolsClientConfig {
+            host: "localhost".to_string(),
+            port: None,
+            enable_tls: None,
+            username: None,
+            password: None,
+            upses: vec![UniversalPowerSupplyConfig {
+                name: "ups".to_string(),
+                variables_to_monitor: None,
+            }],
+        };
+        let client = NetworkUpsToolsClient::new(&config);
+        assert_eq!(client.get_server_id(), "@localhost:3493");
+    }
+
+    #[test]
+    fn test_get_server_id_custom() {
+        let config = NetworkUpsToolsClientConfig {
+            host: "localhost".to_string(),
+            port: Some(1234),
+            enable_tls: Some(false),
+            username: Some("username".to_string()),
+            password: Some("password".to_string()),
+            upses: vec![UniversalPowerSupplyConfig {
+                name: "ups".to_string(),
+                variables_to_monitor: Some(vec!["var".to_string()]),
+            }],
+        };
+        let client = NetworkUpsToolsClient::new(&config);
+        assert_eq!(client.get_server_id(), "username@localhost:1234");
+    }
+}
