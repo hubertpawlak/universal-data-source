@@ -54,6 +54,7 @@ fn main() {
     let one_wire_path_prefix: PathBuf =
         PathBuf::from(&config.one_wire_path_prefix.unwrap_or_default());
     let send_interval = &config.send_interval.unwrap_or_default();
+    let ignore_connection_errors = &config.ignore_connection_errors.unwrap_or_default();
     let enable_one_wire = &config.enable_one_wire.unwrap_or_default();
     let enable_ups_monitoring = &config.enable_ups_monitoring.unwrap_or_default();
     // Build config for each NUT server
@@ -172,7 +173,12 @@ fn main() {
         // Send data to all endpoints
         for endpoint in &config.endpoints {
             // Send data to endpoint
-            send::send_data(&data_to_send, endpoint, send_interval);
+            send::send_data(
+                &data_to_send,
+                endpoint,
+                send_interval,
+                ignore_connection_errors,
+            );
         }
         // Get end time
         let end_time = Instant::now();

@@ -18,8 +18,12 @@ impl DataToSend {
     }
 }
 
-pub fn send_data<T>(json: &T, endpoint: &Endpoint, timeout: &Duration)
-where
+pub fn send_data<T>(
+    json: &T,
+    endpoint: &Endpoint,
+    timeout: &Duration,
+    ignore_connection_errors: &bool,
+) where
     T: ?Sized + Serialize,
 {
     let client = reqwest::blocking::Client::new();
@@ -48,9 +52,8 @@ where
             }
         }
         Err(error) => {
-            // Ignore connection errors in release builds
-            #[cfg(not(debug_assertions))]
-            if error.is_connect() {
+            // Ignore connection errors if specified
+            if *ignore_connection_errors && error.is_connect() {
                 return;
             }
             log::error!("Connection failed: {}", error);
@@ -71,6 +74,6 @@ mod tests {
         };
         let timeout = Duration::from_secs(5);
         let data = vec![1, 2, 3, 4, 5];
-        send_data(&data, &endpoint, &timeout);
+        send_data(&data, &endpoint, &timeout, &false);
     }
 }

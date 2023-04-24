@@ -55,6 +55,7 @@ pub struct Config {
     // Can be safely unwrapped with unwrap_or_default()
     // send.rs
     pub send_interval: Option<Duration>,
+    pub ignore_connection_errors: Option<bool>,
     // ds18b20.rs
     pub enable_one_wire: Option<bool>,
     pub one_wire_path_prefix: Option<String>,
@@ -76,6 +77,7 @@ impl ::std::default::Default for Config {
                 },
             ],
             send_interval: Some(Duration::from_secs(5)),
+            ignore_connection_errors: Some(false),
             enable_one_wire: Some(false),
             one_wire_path_prefix: Some(String::from("/sys/bus/w1/devices")),
             enable_ups_monitoring: Some(false),
@@ -198,6 +200,10 @@ mod tests {
             config.one_wire_path_prefix
         );
         assert_eq!(read_config.send_interval, config.send_interval);
+        assert_eq!(
+            read_config.ignore_connection_errors,
+            config.ignore_connection_errors
+        );
         assert_eq!(read_config.enable_one_wire, config.enable_one_wire);
         assert_eq!(
             read_config.enable_ups_monitoring,
