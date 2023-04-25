@@ -64,16 +64,52 @@ pub fn send_data<T>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mockito::{Matcher::JsonString, Server};
     use std::time::Duration;
 
     #[test]
-    fn test_send_data() {
+    fn test_send_data_without_token() {
+        // Mock server
+        let mut server = Server::new();
+        // Prepare fake endpoint
+        let mock = server
+            .mock("POST", "/post-data")
+            .match_body(JsonString(r#"[1, 2, 3, 4, 5]"#.to_string()))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"json": [1, 2, 3, 4, 5]}"#)
+            .create();
+        // Send data
         let endpoint = Endpoint {
-            url: "https://httpbin.org/post".to_string(),
+            url: format!("{}{}", server.url(), "/post-data"),
             bearer_token: None,
         };
         let timeout = Duration::from_secs(5);
         let data = vec![1, 2, 3, 4, 5];
         send_data(&data, &endpoint, &timeout, &false);
+        // Assert that mock was called
+        mock.assert();
+    }
+
+    #[test]
+    fn test_send_data_with_bearer_token() {
+        let mut server = Server::new();
+        let mock = server
+            .mock("POST", "/post-data")
+            .match_body(JsonString(r#"[1, 2, 3, 4, 5]"#.to_string()))
+            .match_header("Authorization", "Bearer token")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"json": [1, 2, 3, 4, 5]}"#)
+            .create();
+        let bearer_token = Some("token".to_string());
+        let endpoint = Endpoint {
+            url: format!("{}{}", server.url(), "/post-data"),
+            bearer_token,
+        };
+        let timeout = Duration::from_secs(5);
+        let data = vec![1, 2, 3, 4, 5];
+        send_data(&data, &endpoint, &timeout, &false);
+        mock.assert();
     }
 }
