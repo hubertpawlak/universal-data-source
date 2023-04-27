@@ -1,5 +1,6 @@
 // Licensed under the Open Software License version 3.0
 use crate::{config::Endpoint, ds18b20::MeasuredTemperature, ups::UninterruptiblePowerSupplyData};
+use reqwest::blocking::Client;
 use serde::Serialize;
 use std::time::Duration;
 
@@ -19,6 +20,7 @@ impl DataToSend {
 }
 
 pub fn send_data<T>(
+    client: &Client,
     json: &T,
     endpoint: &Endpoint,
     timeout: &Duration,
@@ -26,7 +28,6 @@ pub fn send_data<T>(
 ) where
     T: ?Sized + Serialize,
 {
-    let client = reqwest::blocking::Client::new();
     // Send json to endpoint
     // With bearer token if available (use empty string if not)
     let result = client
@@ -80,13 +81,14 @@ mod tests {
             .with_body(r#"{"json": [1, 2, 3, 4, 5]}"#)
             .create();
         // Send data
+        let client = Client::new();
         let endpoint = Endpoint {
             url: format!("{}{}", server.url(), "/post-data"),
             bearer_token: None,
         };
         let timeout = Duration::from_secs(5);
         let data = vec![1, 2, 3, 4, 5];
-        send_data(&data, &endpoint, &timeout, &false);
+        send_data(&client, &data, &endpoint, &timeout, &false);
         // Assert that mock was called
         mock.assert();
     }
@@ -103,13 +105,14 @@ mod tests {
             .with_body(r#"{"json": [1, 2, 3, 4, 5]}"#)
             .create();
         let bearer_token = Some("token".to_string());
+        let client = Client::new();
         let endpoint = Endpoint {
             url: format!("{}{}", server.url(), "/post-data"),
             bearer_token,
         };
         let timeout = Duration::from_secs(5);
         let data = vec![1, 2, 3, 4, 5];
-        send_data(&data, &endpoint, &timeout, &false);
+        send_data(&client, &data, &endpoint, &timeout, &false);
         mock.assert();
     }
 }

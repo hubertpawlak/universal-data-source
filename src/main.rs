@@ -104,6 +104,8 @@ fn main() {
         // Return empty HashMap if UPS monitoring is disabled
         false => HashMap::new(),
     };
+    // Create a reusable reqwest client
+    let reqwest_client = reqwest::blocking::Client::new();
     // Loop every send_interval seconds
     // Send data to all endpoints
     // Send data from all sensors
@@ -174,6 +176,7 @@ fn main() {
         for endpoint in &config.endpoints {
             // Send data to endpoint
             send::send_data(
+                &reqwest_client,
                 &data_to_send,
                 endpoint,
                 send_interval,
