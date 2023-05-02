@@ -176,6 +176,10 @@ fn main() {
         };
         // Merge data to send into one Object
         let data_to_send = DataToSend::new(sensors, upses);
+        // Serialize and log data_to_send
+        let serialized_data_to_send =
+            serde_json::to_string_pretty(&data_to_send).unwrap_or_default();
+        log::debug!("{}", serialized_data_to_send);
         // Send data to all endpoints
         for endpoint in &config.endpoints {
             // Send data to endpoint
