@@ -57,6 +57,10 @@ fn main() {
     let ignore_connection_errors = &config.ignore_connection_errors.unwrap_or_default();
     let enable_one_wire = &config.enable_one_wire.unwrap_or_default();
     let enable_ups_monitoring = &config.enable_ups_monitoring.unwrap_or_default();
+    // Warn if endpoints are empty
+    if config.endpoints.is_empty() {
+        log::warn!("No endpoints configured. No data will be sent.");
+    }
     // Build config for each NUT server
     let nut_configs: Vec<NetworkUpsToolsClientConfig> = match enable_ups_monitoring {
         true => config
