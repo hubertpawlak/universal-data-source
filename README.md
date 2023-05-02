@@ -111,6 +111,64 @@ The configuration file is written as a JSON object. See table below for a list o
 | name                 | `string`   | -                                                          | Name of the UPS.                                                          | **yes**  |
 | variables_to_monitor | `string[]` | `DEFAULT_VARIABLES_TO_MONITOR` inside [ups.rs](src/ups.rs) | List of variables to monitor. If not specified, defaults to (src/ups.rs). | no       |
 
+# How to run it as a systemd service?
+```bash 
+# Create service account
+useradd --system --home-dir /var/universal-data-source --shell /sbin/nologin --create-home --user-group universal-data-source
+# Create service
+systemctl edit --force --full universal-data-source
+```
+```ini
+; Paste the following configuration
+[Unit]
+Description=sending universal measurements to HTTP endpoints
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment="RUST_LOG=WARN"
+#Environment="UDS_RS_CONFIG_FILE=config2.json"
+ExecStart=/var/universal-data-source/universal-data-source
+WorkingDirectory=/var/universal-data-source
+Restart=no
+User=universal-data-source
+Group=universal-data-source
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+DevicePolicy=closed
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/universal-data-source
+ProtectHostname=yes
+ProtectControlGroups=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+LockPersonality=yes
+UMask=0077
+
+[Install]
+WantedBy=default.target
+```
+```bash
+# Upload binary to /var/universal-data-source directory.
+# Adjust permissions and ownership
+chown universal-data-source:universal-data-source /var/universal-data-source/universal-data-source
+chmod 740 /var/universal-data-source/universal-data-source
+# Enable and start the service
+systemctl enable --now universal-data-source.service
+# Adjust configuration
+nano /var/universal-data-source/config.json
+# Restart service
+systemctl restart universal-data-source.service
+```
+
 # How to build?
 ## Native compilation
 1. Install Rust and Cargo (but you probably already have them installed). See [https://rustup.rs](https://rustup.rs) for more details.
