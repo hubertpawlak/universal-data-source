@@ -1,12 +1,16 @@
 // Licensed under the Open Software License version 3.0
 use crate::config::NetworkUpsToolsClientConfig;
-use rups::{blocking::Connection, Auth, ConfigBuilder};
+use rups::{blocking::Connection, Auth, Config, ConfigBuilder};
 
 pub struct NetworkUpsToolsClient {
     // Take ownership of the connection to use it
     connection: Option<Connection>,
     // Internal state
     server_id: String,
+    config: Config,
+    // Handle failed connections
+    failed_attempts: u8,  // Max 255
+    cooldown_counter: u8, // Don't try to connect for N loop iterations
 }
 
 impl NetworkUpsToolsClient {
@@ -33,13 +37,13 @@ impl NetworkUpsToolsClient {
             .with_auth(auth)
             .with_ssl(config.enable_tls.unwrap_or(false))
             .build();
-        let connection = match Connection::new(&config) {
-            Ok(connection) => Some(connection),
-            Err(_) => None,
-        };
         Self {
-            connection,
+            // Don't connect yet, wait for first request
+            connection: None,
             server_id,
+            config,
+            failed_attempts: 0,
+            cooldown_counter: 0,
         }
     }
 
@@ -48,6 +52,36 @@ impl NetworkUpsToolsClient {
     }
 
     pub fn take_connection(&mut self) -> Option<Connection> {
+        // Create new connection if it doesn't exist
+        // Log error if it fails
+        if self.connection.is_none() {
+            // Check if cooldown is active
+            if self.cooldown_counter > 0 {
+                // Safely decrement cooldown counter
+                self.cooldown_counter = self.cooldown_counter.saturating_sub(1);
+                // Don't try at least until next loop iteration
+                return None;
+            }
+            match Connection::new(&self.config) {
+                Ok(connection) => {
+                    // Connection succeeded, reset failed attempts
+                    self.failed_attempts = 0;
+                    self.connection = Some(connection);
+                    log::info!("{} - Connected", self.server_id);
+                }
+                Err(error) => {
+                    // Connection failed, increment failed attempts and set cooldown period
+                    self.failed_attempts = self.failed_attempts.saturating_add(1);
+                    self.cooldown_counter = self.failed_attempts; // Simple linear backoff
+                    log::warn!(
+                        "{} - {} (waiting for {} loop iterations)",
+                        self.server_id,
+                        error,
+                        self.failed_attempts
+                    );
+                }
+            }
+        }
         self.connection.take()
     }
 

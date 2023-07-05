@@ -159,16 +159,32 @@ fn main() {
                         // Take ownership of connection
                         let connection = match client.take_connection() {
                             Some(connection) => connection,
-                            None => return None,
+                            None => {
+                                // Return client to HashMap if connection fails
+                                // This allows the client to reconnect on the next loop iteration
+                                nut_clients.insert(client.get_server_id(), client);
+                                return None;
+                            }
                         };
                         // Extract variables from UPS
                         let (connection, variables) = ups.list_variables(connection);
-                        // Give connection back to client
-                        client.give_connection(connection);
-                        // Give client back to HashMap
+                        // Assume that connection is dead if returned variables are empty
+                        match variables.is_empty() {
+                            true => {
+                                // Close connection, ignore errors, don't panic
+                                let _ = connection.close();
+                            }
+                            false => {
+                                // Give good connection back to client
+                                client.give_connection(connection);
+                            }
+                        }
+                        // Always give client back to HashMap
                         nut_clients.insert(client.get_server_id(), client);
                         Some(UninterruptiblePowerSupplyData::new(ups, variables))
                     })
+                    // Keep only UPSes that have any meaningful data (variables) to send
+                    .filter(|ups| !ups.variables.is_empty())
                     .collect()
             }
             // Return empty vector if UPS monitoring is disabled
