@@ -16,6 +16,25 @@
                 "isDefault": true
             },
             "label": "rust: build arm release"
+        },
+        {
+            "type": "cargo",
+            "command": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "label": "rust: run unit tests"
         }
     ]
 }
