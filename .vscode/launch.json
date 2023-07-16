@@ -18,7 +18,7 @@
             },
             "args": [],
             "env": {
-                "RUST_LOG": "trace"
+                "RUST_LOG": "universal_data_source=trace"
             },
             "cwd": "${workspaceFolder}"
         },
