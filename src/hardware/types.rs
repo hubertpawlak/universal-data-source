@@ -1,19 +1,19 @@
 // Licensed under the Open Software License version 3.0
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SourceType {
     OneWire,
     NetworkUpsTools,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HardwareType {
     TemperatureSensor,
     UninterruptiblePowerSupply,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HardwareInfo {
     pub id: String,
     pub hardware_type: HardwareType,
@@ -25,7 +25,7 @@ impl HardwareInfo {
     }
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SourceInfo {
     pub source_type: SourceType,
 }
@@ -36,7 +36,7 @@ impl SourceInfo {
     }
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HardwareMetadata {
     pub hw: HardwareInfo,
     pub source: SourceInfo,

@@ -1,35 +1,32 @@
 // Licensed under the Open Software License version 3.0
-use crate::ds18b20::Ds18b20TemperatureSensor;
-use std::{fs::read_dir, path::PathBuf};
+use super::ds18b20::Ds18b20TemperatureSensor;
+use std::path::PathBuf;
+use tokio::fs::read_dir;
 
-pub fn get_all_ds18b20_sensors(base_path: &PathBuf) -> Vec<Ds18b20TemperatureSensor> {
+pub async fn get_all_ds18b20_sensors(base_path: &PathBuf) -> Vec<Ds18b20TemperatureSensor> {
     let mut list: Vec<Ds18b20TemperatureSensor> = Vec::new();
     // Return empty list if base_path is not a directory
     if !base_path.is_dir() {
+        tracing::error!("base_path is not a directory");
         return list;
     }
     // Read base_path directory
-    let entries = match read_dir(base_path) {
+    tracing::trace!("Scanning directory: {}", base_path.display());
+    let mut entries = match read_dir(base_path).await {
         Ok(entries) => entries,
         Err(_) => return list,
     };
     // Leave only directories from entries
-    let entries = entries.filter(|entry| {
-        let entry = entry.as_ref().unwrap();
+    // Push instances of valid Ds18b20TemperatureSensors to list
+    tracing::trace!("Pushing Ds18b20TemperatureSensors");
+    while let Some(entry) = entries.next_entry().await.unwrap() {
         let path = entry.path();
-        path.is_dir()
-    });
-    // Convert DirEntry to PathBuf
-    let entries = entries.map(|entry| {
-        let entry = entry.unwrap();
-        entry.path()
-    });
-    // Create instances of potential Ds18b20TemperatureSensors to list
-    for entry in entries {
-        let sensor = Ds18b20TemperatureSensor::new(entry);
-        // Push if sensor is valid
-        if sensor.is_valid() {
-            list.push(sensor);
+        if path.is_dir() {
+            let sensor = Ds18b20TemperatureSensor::new(path.clone());
+            // Push if sensor is valid
+            if sensor.is_valid() {
+                list.push(sensor);
+            }
         }
     }
     // Return list
@@ -41,8 +38,8 @@ pub fn get_all_ds18b20_sensors(base_path: &PathBuf) -> Vec<Ds18b20TemperatureSen
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_get_all_ds18b20_sensors() {
+    #[tokio::test]
+    async fn test_get_all_ds18b20_sensors() {
         // Create a valid 1-Wire device directory if needed
         let temp_dir = tempfile::tempdir().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
@@ -53,7 +50,7 @@ mod tests {
         std::fs::write(temperature_path, "1234").unwrap();
         std::fs::write(resolution_path, "12").unwrap();
         // Test get_all_ds18b20_sensors
-        let list = get_all_ds18b20_sensors(&temp_path);
+        let list = get_all_ds18b20_sensors(&temp_path).await;
         assert_eq!(list.len(), 1);
         let sensor = &list[0];
         assert_eq!(sensor.meta.hw.id, "28-00000a0b0c0d");
@@ -61,13 +58,13 @@ mod tests {
         assert_eq!(sensor.get_resolution(), Some(12));
     }
 
-    #[test]
-    fn test_get_all_ds18b20_sensors_empty() {
+    #[tokio::test]
+    async fn test_get_all_ds18b20_sensors_empty() {
         // Create a valid 1-Wire device directory if needed
         let temp_dir = tempfile::tempdir().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
         // Test get_all_ds18b20_sensors
-        let list = get_all_ds18b20_sensors(&temp_path);
+        let list = get_all_ds18b20_sensors(&temp_path).await;
         assert_eq!(list.len(), 0);
     }
 }

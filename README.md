@@ -6,6 +6,7 @@
 - Network UPS Tools
 
 # Supported destinations
+## Active data sender
 Any HTTP(S) server that accepts JSON data in the following format:
 ```json
 {
@@ -58,6 +59,13 @@ Any HTTP(S) server that accepts JSON data in the following format:
 ```
 If a module is disabled, it simply returns an empty array for the corresponding key.
 
+## Passive endpoint
+You may send HTTP requests with or without authentication (depending on your configuration) to the following paths:
+- `GET /temperature`
+- `GET /temperature/<id>`
+- `GET /ups`
+- `GET /ups/<id>`
+
 # How to use it?
 1. Run `./universal-data-source` to generate a default configuration file. You can also specify a path to a custom configuration file using `UDS_RS_CONFIG_FILE` environment variable (ex. `UDS_RS_CONFIG_FILE=/etc/universal-data-source/config.toml universal-data-source`).
 2. Edit the configuration file to your needs. Most of the settings are optional and have default values. See [Configuration](#configuration) section for more details.
@@ -65,29 +73,28 @@ If a module is disabled, it simply returns an empty array for the corresponding 
 
 # Configuration
 ## Environment variables
-| key                | default         | description                                                                        | required |
-| ------------------ | --------------- | ---------------------------------------------------------------------------------- | -------- |
-| UDS_RS_CONFIG_FILE | `./config.json` | Path to the configuration file.                                                    | no       |
-| RUST_LOG           | `error`         | See [log::Level](https://docs.rs/log/latest/log/enum.Level.html) for more details. | no       |
+| key                | default                      | description                                                                                                                                        | required |
+| ------------------ | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| UDS_RS_CONFIG_FILE | `./config.json`              | Path to the configuration file.                                                                                                                    | no       |
+| RUST_LOG           | `universal_data_source=warn` | See [EnvFilter directives](https://docs.rs/tracing-subscriber/0.3.17/tracing_subscriber/filter/struct.EnvFilter.html#directives) for more details. | no       |
 
 ## All top-level options
-The configuration file is written as a JSON object. See table below for a list of all available options.
-| key                      | type                            | default               | description                                   | required |
-| ------------------------ | ------------------------------- | --------------------- | --------------------------------------------- | -------- |
-| endpoints                | `Endpoint[]`                    | -                     | List of endpoints to which data will be sent. | **yes**  |
-| send_interval            | `Duration`                      | 5s                    | Interval between sending data to endpoints.   | no       |
-| ignore_connection_errors | `bool`                          | false                 | Ignore connection errors while sending data.  | no       |
-| enable_one_wire          | `bool`                          | false                 | Enable 1-Wire temperature sensors.            | no       |
-| one_wire_path_prefix     | `string`                        | `/sys/bus/w1/devices` | Path to 1-Wire sysfs directory.               | no       |
-| enable_ups_monitoring    | `bool`                          | false                 | Enable Network UPS Tools monitoring.          | no       |
-| nut_connections          | `NetworkUpsToolsClientConfig[]` | []                    | List of NUT servers to connect to.            | **yes**  |
+The configuration file is written as a JSON object. See table below for a list of all available options. Missing modules are disabled by default.
+| key                   | type                    | description                                                               | required |
+| --------------------- | ----------------------- | ------------------------------------------------------------------------- | -------- |
+| one_wire              | `OneWireConfig`         | 1-Wire temperature polling settings                                       | no       |
+| ups_monitoring        | `UpsMonitoringConfig`   | Network UPS monitoring settings                                           | no       |
+| active_data_sender    | `ActiveSenderConfig`    | Settings for periodical data sending using HTTP(S)                        | no       |
+| passive_data_endpoint | `PassiveEndpointConfig` | Settings for passive HTTP endpoint (ideal for third-party control panels) | no       |
+
 
 ## Types explained
-### `Endpoint`
-| key          | type     | default | description                                | required |
-| ------------ | -------- | ------- | ------------------------------------------ | -------- |
-| url          | `string` | -       | URL to which data will be sent.            | **yes**  |
-| bearer_token | `string` | -       | Bearer token to be sent with each request. | no       |
+### `OneWireConfig`
+| key       | type       | default             | description                     | required |
+| --------- | ---------- | ------------------- | ------------------------------- | -------- |
+| enabled   | `bool`     | false               | Whether to enable 1-Wire module | no       |
+| base_path | `string`   | /sys/bus/w1/devices | Base path of 1-Wire devices     | no       |
+| cooldown  | `Duration` | 5s                  | 1-Wire polling cooldown         | no       |
 
 ### `Duration`
 | key   | type     | default | description | required |
@@ -95,21 +102,43 @@ The configuration file is written as a JSON object. See table below for a list o
 | secs  | `number` | 5       | seconds     | **yes**  |
 | nanos | `number` | 0       | nanoseconds | **yes**  |
 
-### `NetworkUpsToolsClientConfig`
-| key        | type                           | default | description                                | required |
-| ---------- | ------------------------------ | ------- | ------------------------------------------ | -------- |
-| host       | `string`                       | -       | Hostname or IP address of the NUT server.  | **yes**  |
-| port       | `number`                       | 3493    | Port on which the NUT server is listening. | no       |
-| enable_tls | `bool`                         | false   | Enable strict TLS?                         | no       |
-| username   | `string`                       | -       | Username for authentication.               | no       |
-| password   | `string`                       | -       | Password for authentication.               | no       |
-| upses      | `UniversalPowerSupplyConfig[]` | -       | List of UPSes to monitor.                  | **yes**  |
 
-### `UniversalPowerSupplyConfig`
-| key                  | type       | default                                                    | description                                                               | required |
-| -------------------- | ---------- | ---------------------------------------------------------- | ------------------------------------------------------------------------- | -------- |
-| name                 | `string`   | -                                                          | Name of the UPS.                                                          | **yes**  |
-| variables_to_monitor | `string[]` | `DEFAULT_VARIABLES_TO_MONITOR` inside [ups.rs](src/ups.rs) | List of variables to monitor. If not specified, defaults to (src/ups.rs). | no       |
+### `UpsMonitoringConfig`
+| key      | type                            | default | description                             | required |
+| -------- | ------------------------------- | ------- | --------------------------------------- | -------- |
+| enabled  | `bool`                          | false   | Whether to enable UPS monitoring module | no       |
+| servers  | `NetworkUpsToolsClientConfig[]` | []      | List of servers to query UPS data from  | no       |
+| cooldown | `Duration`                      | 5s      | UPS polling cooldown                    | no       |
+
+### `NetworkUpsToolsClientConfig`
+| key        | type                                 | default   | description                                        | required |
+| ---------- | ------------------------------------ | --------- | -------------------------------------------------- | -------- |
+| host       | `string`                             | localhost | Hostname or IP address of Network UPS Tools server | **yes**  |
+| port       | `number`                             | 3493      | Port of UPS server                                 | no       |
+| enable_tls | `bool`                               | false     | Whether to enable TLS                              | no       |
+| username   | `string`                             | username  | -                                                  | no       |
+| password   | `string`                             | password  | -                                                  | no       |
+| upses      | `UninterruptiblePowerSupplyConfig[]` | []        | List of UPSes to monitor                           | **yes**  |
+
+### `UninterruptiblePowerSupplyConfig`
+| key                  | type       | default                                   | description                | required |
+| -------------------- | ---------- | ----------------------------------------- | -------------------------- | -------- |
+| name                 | `string`   | -                                         | Name of the UPS            | **yes**  |
+| variables_to_monitor | `string[]` | [variables_to_monitor](src/nut/client.rs) | List of variables to query | no       |
+
+### `ActiveSenderConfig`
+| key                      | type         | default | description                         | required |
+| ------------------------ | ------------ | ------- | ----------------------------------- | -------- |
+| enabled                  | `bool`       | false   | Whether to enable HTTP(S) sender    | no       |
+| cooldown                 | `Duration`   | 5s      | HTTP(S) sender cooldown             | no       |
+| ignore_connection_errors | `bool`       | false   | Whether to ignore connection errors | no       |
+| endpoints                | `Endpoint[]` | []      | List of HTTP(S) endpoints           | no       |
+
+### `Endpoint`
+| key          | type     | default | description                               | required |
+| ------------ | -------- | ------- | ----------------------------------------- | -------- |
+| url          | `string` | -       | URL to which data will be sent            | **yes**  |
+| bearer_token | `string` | -       | Bearer token to be sent with each request | no       |
 
 # How to run it as a systemd service?
 ```bash 

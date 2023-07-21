@@ -1,5 +1,5 @@
 // Licensed under the Open Software License version 3.0
-use crate::hardware::{HardwareMetadata, HardwareType, SourceType};
+use crate::hardware::types::{HardwareMetadata, HardwareType, SourceType};
 use regex::Regex;
 use serde::{Serialize, Serializer};
 use std::{fs::read_to_string, path::PathBuf};
@@ -8,6 +8,7 @@ use std::{fs::read_to_string, path::PathBuf};
 /// represents a 1-Wire temperature sensor (ex. DS18B20).
 /// It needs to have both `temperature`
 /// and `resolution` files inside its directory
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ds18b20TemperatureSensor {
     pub meta: HardwareMetadata,
     path: PathBuf,
@@ -22,13 +23,6 @@ impl Serialize for Ds18b20TemperatureSensor {
         let path = self.path.to_str().unwrap();
         serializer.serialize_str(path)
     }
-}
-
-#[derive(Serialize)]
-pub struct MeasuredTemperature {
-    pub meta: HardwareMetadata,
-    pub temperature: Option<f64>,
-    pub resolution: Option<u8>,
 }
 
 const ONE_WIRE_DEVICE_ID_REGEX: &str = r"^[0-9a-f]{2}-[0-9a-f]{12}$";
@@ -108,6 +102,7 @@ impl Ds18b20TemperatureSensor {
 // Don't repeat yourself
 mod tests {
     use super::*;
+    use crate::one_wire::sender::MeasuredTemperature;
     use tempfile::{tempdir, TempDir};
 
     const VALID_DEVICE_ID: &str = "28-00000a0b0c0d";
